@@ -23,6 +23,10 @@ class ConcavePolygonException(Exception):
     """Raised when the polygon is concave (not convex)"""
     pass
 
+class ZValueNotZeroException(Exception):
+    """Raised when the polygon's z value is not 0"""
+    pass
+
 def check_convexity_and_maybe_ammend(np_polygon):
     # TODO(HiroIshida) PR to jsk_pcl_ros
     # to circumvent jsk_pcl_ros's bag. Ad-hoc fix to convert non-convex to convex

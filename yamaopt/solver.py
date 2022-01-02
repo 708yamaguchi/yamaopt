@@ -15,6 +15,7 @@ from skrobot.model.joint import OmniWheelJoint
 from yamaopt.polygon_constraint import polygon_to_trans_constraint
 from yamaopt.polygon_constraint import polygon_to_desired_rpy
 from yamaopt.polygon_constraint import ConcavePolygonException
+from yamaopt.polygon_constraint import ZValueNotZeroException
 from yamaopt.utils import scipinize
 
 @attr.s # like a dataclass in python3
@@ -131,6 +132,10 @@ class KinematicSolver:
         return hand_ineq_constraint, hand_eq_constraint
 
     def base_constraint_from_polygon(self, movable_polygon):
+        z_values = np.array([m[2] for m in movable_polygon])
+        if not np.all(z_values == 0):
+            raise ZValueNotZeroException
+
         b_lin_ineq = polygon_to_trans_constraint(movable_polygon, d_hover=0.0)[0]
 
         def base_ineq_constraint(q):
@@ -228,7 +233,8 @@ class KinematicSolver:
                     target_polygon = np_polygon
             except ConcavePolygonException:
                 print("Input polygon is not convex. Skip optimization.")
-            print(sol.success)
+            except ZValueNotZeroException:
+                print("movable polygon's z value is not 0. Skip optimization.")
         # TODO this causes error when min_sol is none (if all solve is fail)
         result = self._create_solver_result_from_scipy_sol(min_sol, target_polygon, d_hover)
         return result
