@@ -38,11 +38,22 @@ if __name__=='__main__':
     polygon4 = np.array([[1.0, 0.2, 0.2], [1.0, 0.5, -0.5], [1.0, 0.5, 0.5], [1.0, -0.5, 0.5]]) + np.array([0, 0, 1.0])
     polygons = [polygon1, polygon2, polygon3, polygon4]
     target_obj_pos = np.array([-0.1, 0.7, 0.3])
+    # movable_polygon = np.array([[1.0, 0, 0], [0, 1.0, 0], [-1.0, 0, 0], [0, -1.0, 0]])
+    movable_polygon = np.array([[0.9, 0, 0], [0, 0.9, 0], [-0.9, 0, 0], [0, -0.9, 0]])
+
+    # TODO visualize movable polygon
+
+    # TODO check if movable polygon is convex or not
+    # TODO check if movable pollygon z value is 0 or not
 
     q_init = -np.ones(len(kinsol.control_joint_ids)) * 0.4
-    sol = kinsol.solve_multiple(q_init, polygons, target_obj_pos, 
-                                d_hover=d_hover, joint_limit_margin=joint_limit_margin)
+    sol = kinsol.solve_multiple(q_init, polygons, target_obj_pos,
+                                movable_polygon=movable_polygon,
+                                d_hover=d_hover,
+                                joint_limit_margin=joint_limit_margin)
     assert sol.success
+
+    print('pos: {}'.format(sol.x[-3:]))
 
     if visualize:
         # visualize
