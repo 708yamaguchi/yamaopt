@@ -45,15 +45,15 @@ class SolverConfig(object):
 
 @attr.s # like a dataclass in python3
 class SolverResult(object):
-    success = attr.ib()
-    x = attr.ib()
-    fun = attr.ib()
+    success = attr.ib(default=None)
+    x = attr.ib(default=None)
+    fun = attr.ib(default=None)
 
     # additional infos
-    end_coords = attr.ib()
-    target_polygon = attr.ib()
-    _d_hover = attr.ib()
-    _sol_scipy = attr.ib()
+    end_coords = attr.ib(default=None)
+    target_polygon = attr.ib(default=None)
+    _d_hover = attr.ib(default=None)
+    _sol_scipy = attr.ib(default=None)
 
 class KinematicSolver:
     def __init__(self, config):
@@ -159,24 +159,31 @@ class KinematicSolver:
             movable_polygon = None  # Ignore movable area if use_base is False
         assert len(q_init) == self.dof
 
-        # Constraint functions for hand
-        f_ineq, f_eq = self.configuration_constraint_from_polygon(
-            np_polygon, d_hover=d_hover)
-        eq_const_scipy, eq_const_jac_scipy = scipinize(f_eq)
-        eq_dict = {'type': 'eq', 'fun': eq_const_scipy,
-                   'jac': eq_const_jac_scipy}
-        ineq_const_scipy, ineq_const_jac_scipy = scipinize(f_ineq)
-        ineq_dict = {'type': 'ineq', 'fun': ineq_const_scipy,
-                     'jac': ineq_const_jac_scipy}
-        # Constraint functions for base
-        if movable_polygon is None:
-            cons = [eq_dict, ineq_dict]
-        else:
-            b_ineq = self.base_constraint_from_polygon(movable_polygon)
-            b_ineq_const_scipy, b_ineq_const_jac_scipy = scipinize(b_ineq)
-            b_ineq_dict = {'type': 'ineq', 'fun': b_ineq_const_scipy,
-                           'jac': b_ineq_const_jac_scipy}
-            cons = [eq_dict, ineq_dict, b_ineq_dict]
+        try:
+            # Constraint functions for hand
+            f_ineq, f_eq = self.configuration_constraint_from_polygon(
+                np_polygon, d_hover=d_hover)
+            eq_const_scipy, eq_const_jac_scipy = scipinize(f_eq)
+            eq_dict = {'type': 'eq', 'fun': eq_const_scipy,
+                       'jac': eq_const_jac_scipy}
+            ineq_const_scipy, ineq_const_jac_scipy = scipinize(f_ineq)
+            ineq_dict = {'type': 'ineq', 'fun': ineq_const_scipy,
+                         'jac': ineq_const_jac_scipy}
+            # Constraint functions for base
+            if movable_polygon is None:
+                cons = [eq_dict, ineq_dict]
+            else:
+                b_ineq = self.base_constraint_from_polygon(movable_polygon)
+                b_ineq_const_scipy, b_ineq_const_jac_scipy = scipinize(b_ineq)
+                b_ineq_dict = {'type': 'ineq', 'fun': b_ineq_const_scipy,
+                               'jac': b_ineq_const_jac_scipy}
+                cons = [eq_dict, ineq_dict, b_ineq_dict]
+        except ConcavePolygonException:
+            print("Input polygon is not convex. Skip optimization.")
+            return self._create_solver_result_from_scipy_sol(None)
+        except ZValueNotZeroException:
+            print("movable polygon's z value is not 0. Skip optimization.")
+            return self._create_solver_result_from_scipy_sol(None)
 
         # Objective function
         f_obj = self.create_objective_function(target_obs_pos)
@@ -222,24 +229,22 @@ class KinematicSolver:
         min_sol = None
         target_polygon = None
         for np_polygon in np_polygons:
-            try:
-                sol = self.solve(
-                    q_init, np_polygon, target_obs_pos,
-                    movable_polygon=movable_polygon,
-                    d_hover=d_hover, joint_limit_margin=joint_limit_margin)
-                if sol.success and sol.fun < min_cost:
-                    min_cost = sol.fun
-                    min_sol = sol
-                    target_polygon = np_polygon
-            except ConcavePolygonException:
-                print("Input polygon is not convex. Skip optimization.")
-            except ZValueNotZeroException:
-                print("movable polygon's z value is not 0. Skip optimization.")
+            sol = self.solve(
+                q_init, np_polygon, target_obs_pos,
+                movable_polygon=movable_polygon,
+                d_hover=d_hover, joint_limit_margin=joint_limit_margin)
+            if sol.success and sol.fun < min_cost:
+                min_cost = sol.fun
+                min_sol = sol
+                target_polygon = np_polygon
         # TODO this causes error when min_sol is none (if all solve is fail)
         result = self._create_solver_result_from_scipy_sol(min_sol, target_polygon, d_hover)
         return result
 
-    def _create_solver_result_from_scipy_sol(self, sol_scipy, target_polygon, d_hover):
+    def _create_solver_result_from_scipy_sol(
+            self, sol_scipy, target_polygon=None, d_hover=None):
+        if sol_scipy is None:
+            return SolverResult(success=False)
         poses, _ = self.forward_kinematics(sol_scipy.x)
         pose = poses[0]
         return SolverResult(sol_scipy.success, sol_scipy.x, sol_scipy.fun, pose, target_polygon, d_hover, sol_scipy)

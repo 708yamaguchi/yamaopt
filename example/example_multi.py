@@ -41,7 +41,7 @@ if __name__=='__main__':
     target_obj_pos = np.array([-0.1, 0.7, 0.3])
 
     movable_polygon = np.array(
-        [[0.5, 0, 0], [0, 0.5, 0], [-0.5, 0, 0], [0, -0.5, 0.0]])
+        [[0.5, 0, 0], [0, 0.5, 0], [-0.5, 0, 0], [0, -0.5, 0]])
     movable_polygon += np.array([-1.6, 0.5, 0.0])
     if not config.use_base:
         movable_polygon = None
@@ -51,9 +51,11 @@ if __name__=='__main__':
                                 movable_polygon=movable_polygon,
                                 d_hover=d_hover,
                                 joint_limit_margin=joint_limit_margin)
-    assert sol.success
-
-    print('pos: {}'.format(sol.x[-3:]))
+    if sol.success:
+        print('optimization succeeded.')
+    else:
+        print('optimization failed.')
+        exit()
 
     if visualize:
         # visualize
