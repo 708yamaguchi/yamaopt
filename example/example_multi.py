@@ -37,11 +37,14 @@ if __name__=='__main__':
     polygon3 = polygon1.dot(rotation_matrix(-math.pi / 2.0, [0, 0, 1.0]).T)
     polygon4 = np.array([[1.0, 0.2, 0.2], [1.0, 0.5, -0.5], [1.0, 0.5, 0.5], [1.0, -0.5, 0.5]]) + np.array([0, 0, 1.0])
     polygons = [polygon1, polygon2, polygon3, polygon4]
-    target_obj_pos = np.array([-0.1, 0.7, 0.3])
-    # movable_polygon = np.array([[1.0, 0, 0], [0, 1.0, 0], [-1.0, 0, 0], [0, -1.0, 0]])
-    movable_polygon = np.array([[0.9, 0, 0], [0, 0.9, 0], [-0.9, 0, 0], [0, -0.9, 0]])
 
-    # TODO visualize movable polygon
+    target_obj_pos = np.array([-0.1, 0.7, 0.3])
+
+    movable_polygon = np.array(
+        [[0.5, 0, 0], [0, 0.5, 0], [-0.5, 0, 0], [0, -0.5, 0]])
+    movable_polygon += np.array([-1.6, 0.5, 0.0])
+    if not config.use_base:
+        movable_polygon = None
 
     # TODO check if movable polygon is convex or not
     # TODO check if movable pollygon z value is 0 or not
@@ -59,5 +62,7 @@ if __name__=='__main__':
         # visualize
         vm = VisManager(config)
         vm.add_target(target_obj_pos)
-        vm.reflect_solver_result(sol, polygons, show_polygon_axis=True)
+        vm.reflect_solver_result(
+            sol, polygons, movable_polygon=movable_polygon,
+            show_polygon_axis=True)
         vm.show_while()

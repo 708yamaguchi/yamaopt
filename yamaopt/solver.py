@@ -103,16 +103,9 @@ class KinematicSolver:
 
         return f
 
-    # TODO: We should seperate this function: for hand and for base?
-    def configuration_constraint_from_polygon(
-            self, np_polygon, movable_polygon=None, d_hover=0.0):
+    def configuration_constraint_from_polygon(self, np_polygon, d_hover):
         lin_ineq, lin_eq = polygon_to_trans_constraint(np_polygon, d_hover)
-        b_lin_ineq = polygon_to_trans_constraint(movable_polygon, d_hover=0.0)[0]
         rpy_desired = polygon_to_desired_rpy(np_polygon)
-        # print(np_polygon)
-        # print(movable_polygon)
-        # print("lin_ineq")
-        # print(lin_ineq)
         print("desired")
         print(rpy_desired)
 
@@ -122,11 +115,6 @@ class KinematicSolver:
             J_pos = J_whole[:3, :]
             val = ((lin_ineq.A.dot(P_pos.T)).T - lin_ineq.b).flatten()
             jac = lin_ineq.A.dot(J_pos)
-            # print(P_pos)
-            # print(J_pos)
-            # print('hand')
-            # print(val)
-            # print(jac)
             return val, jac
 
         def hand_eq_constraint(q):
@@ -140,47 +128,46 @@ class KinematicSolver:
             jac_rot = J_rot
             return np.hstack([val_pos, val_rot]), np.vstack([jac_pos, jac_rot])
 
+        return hand_ineq_constraint, hand_eq_constraint
+
+    def base_constraint_from_polygon(self, movable_polygon):
+        b_lin_ineq = polygon_to_trans_constraint(movable_polygon, d_hover=0.0)[0]
+
         def base_ineq_constraint(q):
             P = np.array([q[-3:]])
             P[0][-1] = 0  # P = [x, y, z=0]
-            # J = np.zeros(())
-            # J = np.eye(len(q))
-            # J[:-3] = 0
-            # J[-1] = 0
-            J = np.zeros((3, 10))  # 10 -> len(q)
+            J = np.zeros((3, len(q)))
             J[0][-3] = 1.0
             J[1][-2] = 1.0
-            print(b_lin_ineq)
             val = ((b_lin_ineq.A.dot(P.T)).T - b_lin_ineq.b).flatten()
             jac = b_lin_ineq.A.dot(J)
-            # print('base')
-            # print(q)
-            # print(P)
-            # print(J)
-            # print(val)
-            # print(jac)
             return val, jac
 
-        return hand_ineq_constraint, hand_eq_constraint, base_ineq_constraint
+        return base_ineq_constraint
 
     def solve(self, q_init, np_polygon, target_obs_pos, movable_polygon=None,
               d_hover=0.0, joint_limit_margin=0.0):
         if self.config.use_base:
             q_init = np.hstack((q_init, np.zeros(3)))
+        else:
+            print('WARNING: movable_polygon is given though use_base is False.')
+            movable_polygon = None  # Ignore movable area if use_base is False
         assert len(q_init) == self.dof
 
-        # Constraint functions
-        f_ineq, f_eq, b_ineq = self.configuration_constraint_from_polygon(
-            np_polygon, movable_polygon=movable_polygon, d_hover=d_hover)
+        # Constraint functions for hand
+        f_ineq, f_eq = self.configuration_constraint_from_polygon(
+            np_polygon, d_hover=d_hover)
         eq_const_scipy, eq_const_jac_scipy = scipinize(f_eq)
         eq_dict = {'type': 'eq', 'fun': eq_const_scipy,
                    'jac': eq_const_jac_scipy}
         ineq_const_scipy, ineq_const_jac_scipy = scipinize(f_ineq)
         ineq_dict = {'type': 'ineq', 'fun': ineq_const_scipy,
                      'jac': ineq_const_jac_scipy}
+        # Constraint functions for base
         if movable_polygon is None:
             cons = [eq_dict, ineq_dict]
         else:
+            b_ineq = self.base_constraint_from_polygon(movable_polygon)
             b_ineq_const_scipy, b_ineq_const_jac_scipy = scipinize(b_ineq)
             b_ineq_dict = {'type': 'ineq', 'fun': b_ineq_const_scipy,
                            'jac': b_ineq_const_jac_scipy}

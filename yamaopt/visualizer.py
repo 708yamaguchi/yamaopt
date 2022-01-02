@@ -78,7 +78,8 @@ class VisManager:
         self.viewer.add(target_sphere_link)
 
     def reflect_solver_result(
-            self, solver_result, np_polygon_list, show_polygon_axis=False):
+            self, solver_result, np_polygon_list, movable_polygon=None,
+            show_polygon_axis=False):
         # change visual robot configuration
         self.set_angle_vector(solver_result.x)
 
@@ -104,6 +105,11 @@ class VisManager:
         self.add_polygon(
             solver_result.target_polygon,
             rgba=[0, 255, 0, 255], show_axis=show_polygon_axis)
+
+        # add polygon where robot can move
+        if movable_polygon is not None:
+            self.add_polygon(
+                movable_polygon, rgba=[0, 255, 255, 255], show_axis=False)
 
     def set_angle_vector(self, q):
         joints = [self.robot.__dict__[name] for name in self.config.control_joint_names]

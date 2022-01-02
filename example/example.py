@@ -34,14 +34,22 @@ if __name__=='__main__':
     polygon += np.array([0.3, -0.7, 0.7])
     target_pos = np.array([-0.3, -0.6, 1.6])
 
+    movable_polygon = np.array(
+        [[0.5, 0, 0], [0, 0.5, 0], [-0.5, 0, 0], [0, -0.5, 0]])
+    movable_polygon += np.array([-1.0, -1.0, 0.0])
+    if not config.use_base:
+        movable_polygon = None
+
     q_init = -np.ones(len(kinsol.control_joint_ids)) * 0.4
-    sol = kinsol.solve(q_init, polygon, target_pos, 
-            d_hover=d_hover, joint_limit_margin=joint_limit_margin)
+    sol = kinsol.solve(q_init, polygon, target_pos,
+                       movable_polygon=movable_polygon,
+                       d_hover=d_hover, joint_limit_margin=joint_limit_margin)
     assert sol.success
 
     if visualize:
         # visualize
         vm = VisManager(config)
         vm.add_target(target_pos)
-        vm.reflect_solver_result(sol, [polygon], show_polygon_axis=True)
+        vm.reflect_solver_result(sol, [polygon], movable_polygon,
+                                 show_polygon_axis=True)
         vm.show_while()
