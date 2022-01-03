@@ -83,7 +83,7 @@ class VisManager:
         # change visual robot configuration
         self.set_angle_vector(solver_result.x)
 
-        # add axis indicating sensor placement pose
+        # add axis indicating robot end coords to place sensor
         xyzrpy = solver_result.end_coords
         pos = xyzrpy[:3]
         ypr = np.flip(xyzrpy[3:])
@@ -94,6 +94,11 @@ class VisManager:
         sensor_axis = copy.deepcopy(hover_axis)
         sensor_axis.translate([solver_result._d_hover, 0.0, 0.0])
         self.viewer.add(sensor_axis)
+
+        # add sphere indicating optimization frame (sensing target coords)
+        opt_pos = solver_result.opt_frame_coords[:3]
+        opt_sphere_link = Sphere(0.05, pos=opt_pos, color=[0, 255, 0])
+        self.viewer.add(opt_sphere_link)
 
         # add polygons which sensor will NOT be placed
         for polygon in filter(
