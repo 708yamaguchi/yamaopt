@@ -106,9 +106,6 @@ class KinematicSolver:
 
     def configuration_constraint_from_polygon(self, np_polygon, d_hover):
         lin_ineq, lin_eq = polygon_to_trans_constraint(np_polygon, d_hover)
-        rpy_desired = polygon_to_desired_rpy(np_polygon)
-        print("desired")
-        print(rpy_desired)
 
         def hand_ineq_constraint(q):
             P_whole, J_whole = self.forward_kinematics(q)
@@ -119,13 +116,20 @@ class KinematicSolver:
             return val, jac
 
         def hand_eq_constraint(q):
+            # pos value and jacobian
             P_whole, J_whole = self.forward_kinematics(q)
             P_pos, P_rot = P_whole[:, :3], P_whole[:, 3:]
             J_pos, J_rot = J_whole[:3, :], J_whole[3:, :]
             val_pos = ((lin_eq.A.dot(P_pos.T)).T - lin_eq.b).flatten()
             jac_pos = lin_eq.A.dot(J_pos)
-
-            val_rot = P_rot.flatten() - rpy_desired
+            # remove roll constraint
+            wrist_roll_index = 0
+            rpy_desired = polygon_to_desired_rpy(np_polygon)
+            py_desired = np.delete(rpy_desired, wrist_roll_index, axis=0)
+            P_rot = np.delete(P_rot, wrist_roll_index, axis=1)
+            J_rot = np.delete(J_rot, wrist_roll_index, axis=0)
+            # rot value and rot jacobian
+            val_rot = P_rot.flatten() - py_desired
             jac_rot = J_rot
             return np.hstack([val_pos, val_rot]), np.vstack([jac_pos, jac_rot])
 
