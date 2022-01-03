@@ -1,0 +1,14 @@
+# How to create fetch urdf with sensor frames (fetch_sensors_test.urdf)
+# $ cd tests
+# $ ./create_sensor_urdf.sh
+
+urdf_path: ~/.skrobot/fetch_description/fetch_sensors_test.urdf
+control_joint_names: [
+    torso_lift_joint, 
+    shoulder_pan_joint,
+    shoulder_lift_joint,
+    upperarm_roll_joint,
+    elbow_flex_joint,
+    forearm_roll_joint]
+endeffector_link_name: gripper_link
+optimization_frame: ai_camera_frame
