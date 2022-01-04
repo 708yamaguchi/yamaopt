@@ -1,8 +1,4 @@
-# How to create fetch urdf with sensor frames (fetch_sensors_test.urdf)
-# $ cd tests
-# $ ./create_sensor_urdf.sh
-
-urdf_path: ~/.skrobot/pr2_description/pr2_sensors_test.urdf
+urdf_path: ~/.skrobot/pr2_description/pr2_sensors.urdf
 control_joint_names: [
     r_shoulder_pan_joint, 
     r_shoulder_lift_joint,

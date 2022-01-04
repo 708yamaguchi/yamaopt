@@ -4,6 +4,7 @@ import copy
 import attr
 from tinyfk import RobotModel
 import yaml
+from pkg_resources import Requirement, resource_filename
 import numpy as np
 import scipy.optimize
 import skrobot
@@ -17,6 +18,7 @@ from yamaopt.polygon_constraint import polygon_to_desired_rpy
 from yamaopt.polygon_constraint import ConcavePolygonException
 from yamaopt.polygon_constraint import ZValueNotZeroException
 from yamaopt.utils import scipinize
+
 
 @attr.s # like a dataclass in python3
 class SolverConfig(object):
@@ -34,7 +36,6 @@ class SolverConfig(object):
             ):
         with open(config_path, 'r') as f:
             cfg = yaml.safe_load(f)
-
         return cls(
                 use_base,
                 urdf_path = cfg['urdf_path'],

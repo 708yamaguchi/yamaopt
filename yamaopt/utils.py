@@ -1,3 +1,6 @@
+import os
+import yaml
+
 
 def scipinize(fun):
     """Scipinize a function returning both f and jac
@@ -111,3 +114,26 @@ def quaternion2rpy(q):
         q[1] ** 2 + q[0] ** 2 - q[3] ** 2 - q[2] ** 2)
     rpy = np.array([yaw, pitch, roll])
     return rpy, np.pi - rpy
+
+
+def config_path_from_robot_name(robot_name):
+    if robot_name == 'fetch':
+        config_path = "../config/fetch_conf.yaml"
+    elif robot_name == 'pr2':
+        config_path = "../config/pr2_conf.yaml"
+    elif robot_name == 'fetch_sensors':
+        config_path = "../tests/config/fetch_conf.yaml"
+    elif robot_name == 'pr2_sensors':
+        config_path = "../tests/config/pr2_conf.yaml"
+    else:
+        print('Invalid robot name.')
+        raise Exception
+
+    with open(config_path, 'r') as f:
+        cfg = yaml.safe_load(f)
+    urdf_path = os.path.expanduser(cfg['urdf_path'])
+    if not os.path.exists(urdf_path):
+        print('{} not found'.format(urdf_path))
+        raise Exception
+
+    return config_path
