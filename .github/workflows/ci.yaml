@@ -53,3 +53,9 @@ jobs:
                   python example.py -robot fetch --use_base --limit_base
                   # Check concave polygon input
                   python example_multi.py -robot pr2
+                  # Check robot urdf with sensor frames
+                  cd ../tests
+                  pip install xacro
+                  ./create_sensor_urdf.sh
+                  cd ../example
+                  python example_multi.py --config_path ../tests/config/pr2_conf.yaml --use_base
