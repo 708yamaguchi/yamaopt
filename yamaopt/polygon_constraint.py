@@ -61,7 +61,7 @@ def is_convex(np_polygon):
     sign_list = np.sign([crosspro_list[0].dot(e) for e in crosspro_list])
     return np.all(sign_list > 0) or np.all(sign_list < 0)
 
-def polygon_to_desired_rpy(np_polygon):
+def polygon_to_desired_matrix(np_polygon):
     normalize = lambda vec: vec/np.linalg.norm(vec)
     strip_z = lambda vec: np.array([vec[0], vec[1], 0.0])
     points = np_polygon
@@ -81,11 +81,16 @@ def polygon_to_desired_rpy(np_polygon):
         z_axis *= -1
         
     M = np.vstack([x_axis, y_axis, z_axis]).T
+    return M
+
+def polygon_to_desired_rpy(np_polygon):
+    M = polygon_to_desired_matrix(np_polygon)
     ypr = rpy_angle(M)[0]
     rpy = np.flip(ypr)
     return rpy
 
-def polygon_to_trans_constraint(np_polygon, d_hover):
+def polygon_to_trans_constraint(
+        np_polygon, d_hover, camera_origin=np.array([0, 0, 0])):
     if not is_convex(np_polygon):
         raise ConcavePolygonException
 
@@ -93,8 +98,12 @@ def polygon_to_trans_constraint(np_polygon, d_hover):
 
     points = np_polygon
 
-    n_vec = normalize(np.cross(points[2] - points[1], points[1] - points[0]))
-    if points[1].dot(n_vec) < 0.0:
+    M = polygon_to_desired_matrix(points)
+    n_vec = M.T[0]
+
+    polygon_center = np.mean(points, axis=0)
+
+    if (polygon_center - camera_origin).dot(n_vec) > 0.0:
         # n_vec must not direct toward the robot
         n_vec *= -1
         points = np.flip(points, axis=0)
