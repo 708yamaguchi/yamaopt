@@ -61,31 +61,42 @@ def is_convex(np_polygon):
     sign_list = np.sign([crosspro_list[0].dot(e) for e in crosspro_list])
     return np.all(sign_list > 0) or np.all(sign_list < 0)
 
-def polygon_to_desired_rpy(np_polygon):
+def polygon_to_matrix(np_polygon, normal):
     normalize = lambda vec: vec/np.linalg.norm(vec)
     strip_z = lambda vec: np.array([vec[0], vec[1], 0.0])
+    x_flip = False
+    # Calculate x axis (normal vector) of polygon
     points = np_polygon
     center = np.mean(points, axis=0)
     x_axis = normalize(np.cross(points[2] - points[1], points[1] - points[0]))
-
-    tmp = np.array([x_axis[0], x_axis[1], 0.0])
-
     # becase normal vector should always directed against the robot body
-    if center.dot(x_axis) < 0.0:
-        x_axis *= -1
-
+    # If normal is given, use normal as x_axis
+    if normal is None:
+        if center.dot(x_axis) < 0.0:
+            x_axis *= -1
+            x_flip = True
+    else:
+        if x_axis.dot(normal) < 0.0:
+            x_flip = True
+        x_axis = normal
+    # Calculate y and z axis of polygon
     y_axis = normalize(strip_z(points[1] - points[0]))
     z_axis = np.cross(x_axis, y_axis)
     if z_axis[2] < 0.0:
         y_axis *= -1
         z_axis *= -1
-        
+    # Return polygon rotation matrix
     M = np.vstack([x_axis, y_axis, z_axis]).T
+    return M, x_flip
+
+
+def polygon_to_desired_rpy(np_polygon, normal=None):
+    M, _ = polygon_to_matrix(np_polygon, normal)
     ypr = rpy_angle(M)[0]
     rpy = np.flip(ypr)
     return rpy
 
-def polygon_to_trans_constraint(np_polygon, d_hover):
+def polygon_to_trans_constraint(np_polygon, normal=None, d_hover=0.0):
     if not is_convex(np_polygon):
         raise ConcavePolygonException
 
@@ -93,11 +104,21 @@ def polygon_to_trans_constraint(np_polygon, d_hover):
 
     points = np_polygon
 
-    n_vec = normalize(np.cross(points[2] - points[1], points[1] - points[0]))
-    if points[1].dot(n_vec) < 0.0:
-        # n_vec must not direct toward the robot
-        n_vec *= -1
+    # if normal is None:
+    #     n_vec = normalize(np.cross(points[2] - points[1], points[1] - points[0]))
+    #     if points[1].dot(n_vec) < 0.0:
+    #         # n_vec must not direct toward the robot
+    #         n_vec *= -1
+    #         points = np.flip(points, axis=0)
+    # else:
+    #     # TODO (* -1) in yamaopt_ros
+    #     n_vec = normalize(normal) * -1
+    import rospy
+    rospy.logerr(normal)
+    n_vec, x_flip = polygon_to_matrix(points, normal)
+    if x_flip is True:
         points = np.flip(points, axis=0)
+    n_vec = normalize(normal)
     points_auged = np.vstack([points, points[0]])
 
     # construct equality constraint

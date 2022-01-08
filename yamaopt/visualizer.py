@@ -50,11 +50,11 @@ class VisManager:
         self.viewer.add(robot)
 
     def add_polygon(
-            self, np_polygon,
+            self, np_polygon, normal=None,
             flip_and_append=True, rgba=[255, 0, 0, 200], show_axis=False):
         if show_axis:
             pos = np.mean(np_polygon, axis=0)
-            ypr = np.flip(polygon_to_desired_rpy(np_polygon))
+            ypr = np.flip(polygon_to_desired_rpy(np_polygon, normal))
             coords = Coordinates(pos, ypr)
             polygon_axis = Axis(pos=coords.worldpos(), rot=coords.worldrot())
             self.viewer.add(polygon_axis)
@@ -78,7 +78,8 @@ class VisManager:
         self.viewer.add(target_sphere_link)
 
     def reflect_solver_result(
-            self, solver_result, np_polygon_list, movable_polygon=None,
+            self, solver_result, np_polygon_list, normals=None,
+            movable_polygon=None,
             show_polygon_axis=False):
         # change visual robot configuration
         self.set_angle_vector(solver_result.x)
@@ -95,16 +96,17 @@ class VisManager:
         sensor_axis.translate([solver_result._d_hover, 0.0, 0.0])
         self.viewer.add(sensor_axis)
 
-        # add polygons which sensor will NOT be placed
-        for polygon in filter(
-                lambda arr: not np.array_equal(arr, solver_result.target_polygon), 
-                np_polygon_list):
-            self.add_polygon(polygon, show_axis=show_polygon_axis)
-
-        # add polygon which sensor will be placed
-        self.add_polygon(
-            solver_result.target_polygon,
-            rgba=[0, 255, 0, 255], show_axis=show_polygon_axis)
+        if normals is None:
+            normals = [None] * len(np_polygon_list)
+        for polygon, normal in zip(np_polygon_list, normals):
+            if np.array_equal(polygon, solver_result.target_polygon):
+                # add polygon which sensor will be placed
+                self.add_polygon(
+                    solver_result.target_polygon, normal,
+                    rgba=[0, 255, 0, 255], show_axis=show_polygon_axis)
+            else:
+                # # add polygons which sensor will NOT be placed
+                self.add_polygon(polygon, normal, show_axis=show_polygon_axis)
 
         # add polygon where robot can move
         if movable_polygon is not None:

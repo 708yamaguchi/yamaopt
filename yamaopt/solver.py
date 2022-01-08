@@ -104,9 +104,12 @@ class KinematicSolver:
 
         return f
 
-    def configuration_constraint_from_polygon(self, np_polygon, d_hover):
-        lin_ineq, lin_eq = polygon_to_trans_constraint(np_polygon, d_hover)
-        rpy_desired = polygon_to_desired_rpy(np_polygon)
+    def configuration_constraint_from_polygon(
+            self, np_polygon, normal, d_hover):
+        # for pos constraint
+        lin_ineq, lin_eq = polygon_to_trans_constraint(np_polygon, normal, d_hover)
+        # for rpy constraint
+        rpy_desired = polygon_to_desired_rpy(np_polygon, normal)
         print("desired")
         print(rpy_desired)
 
@@ -136,7 +139,7 @@ class KinematicSolver:
         if not np.all(z_values == 0):
             raise ZValueNotZeroException
 
-        b_lin_ineq = polygon_to_trans_constraint(movable_polygon, d_hover=0.0)[0]
+        b_lin_ineq = polygon_to_trans_constraint(movable_polygon, None, d_hover=0.0)[0]
 
         def base_ineq_constraint(q):
             P = np.array([q[-3:]])
@@ -151,7 +154,7 @@ class KinematicSolver:
         return base_ineq_constraint
 
     def solve(self, q_init, np_polygon, target_obs_pos, movable_polygon=None,
-              d_hover=0.0, joint_limit_margin=0.0):
+              normal=None, d_hover=0.0, joint_limit_margin=0.0):
         if self.config.use_base:
             q_init = np.hstack((q_init, np.zeros(3)))
         else:
@@ -162,7 +165,7 @@ class KinematicSolver:
         try:
             # Constraint functions for hand
             f_ineq, f_eq = self.configuration_constraint_from_polygon(
-                np_polygon, d_hover=d_hover)
+                np_polygon, normal, d_hover)
             eq_const_scipy, eq_const_jac_scipy = scipinize(f_eq)
             eq_dict = {'type': 'eq', 'fun': eq_const_scipy,
                        'jac': eq_const_jac_scipy}
@@ -218,7 +221,7 @@ class KinematicSolver:
         return self._create_solver_result_from_scipy_sol(sol, np_polygon, d_hover)
 
     def solve_multiple(self, q_init, np_polygons, target_obs_pos,
-                       movable_polygon=None,
+                       movable_polygon=None, normals=None,
                        d_hover=0.0, joint_limit_margin=0.0):
         """
         np_polygons: List[np.ndarray]
@@ -226,10 +229,12 @@ class KinematicSolver:
         min_cost = np.inf
         min_sol = None
         target_polygon = None
-        for np_polygon in np_polygons:
+        if normals is None:
+            normals = [None] * len(np_polygons)
+        for np_polygon, normal in zip(np_polygons, normals):
             sol = self.solve(
                 q_init, np_polygon, target_obs_pos,
-                movable_polygon=movable_polygon,
+                movable_polygon=movable_polygon, normal=normal,
                 d_hover=d_hover, joint_limit_margin=joint_limit_margin)
             if sol.success and sol.fun < min_cost:
                 min_cost = sol.fun
